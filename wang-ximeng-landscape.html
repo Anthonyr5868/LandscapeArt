@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A Thousand Li — generative shanshui</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+<style>
+  :root {
+    --lacquer: #241b13;
+    --silk-hint: #c7a878;
+  }
+  html, body { margin: 0; padding: 0; background: var(--lacquer); }
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: Georgia, "Times New Roman", serif;
+    color: var(--silk-hint);
+    padding: 28px 16px;
+    box-sizing: border-box;
+  }
+  header { text-align: center; margin-bottom: 18px; letter-spacing: 0.06em; }
+  header h1 { font-size: 15px; font-weight: normal; margin: 0; opacity: 0.9; }
+  header p  { font-size: 11px; margin: 6px 0 0; opacity: 0.5; font-style: italic; }
+  #holder { max-width: 1400px; width: 100%; box-shadow: 0 18px 60px rgba(0,0,0,0.55); }
+  #holder canvas { display: block; width: 100% !important; height: auto !important; cursor: pointer; }
+</style>
+</head>
+<body>
+<header>
+  <h1>a thousand li of rivers and mountains &mdash; after Wang Ximeng</h1>
+  <p>click the scroll to repaint</p>
+</header>
+<div id="holder"></div>
+
+<script>
+// ---------------------------------------------------------------
+// Generative blue-green (qinglü) shanshui, after Wang Ximeng, 1113
+// Structure: silk ground -> mountain layers (far to near) with
+// azurite/malachite gradients + mist -> water -> details -> grain
+// ---------------------------------------------------------------
+
+const W = 1400, H = 520;
+let seed = 1113;                 // year the original was painted
+let ctx;
+
+// palette — mineral pigments on aged silk
+const P = {
+  silk:      [199, 168, 118],
+  silkDark:  [170, 138, 92],
+  azurite:   [ 32,  92, 116],   // shiqing 石青
+  malachite: [ 82, 138, 102],   // shilü 石绿
+  ochre:     [168, 126,  74],   // zheshi 赭石
+  ink:       [ 46,  52,  48],
+  haze:      [214, 190, 148],
+  seal:      [172,  48,  38],
+};
+
+function col(a, alpha = 255) { return color(a[0], a[1], a[2], alpha); }
+function css(a, alpha = 1)   { return `rgba(${a[0]},${a[1]},${a[2]},${alpha})`; }
+
+function setup() {
+  const c = createCanvas(W, H);
+  c.parent('holder');
+  pixelDensity(Math.min(2, window.devicePixelRatio || 1));
+  ctx = drawingContext;
+  noLoop();
+}
+
+function mousePressed() {
+  if (mouseX >= 0 && mouseX <= width && mouseY >= 0 && mouseY <= height) {
+    seed = floor(random(1e6));
+    redraw();
+  }
+}
+
+function draw() {
+  randomSeed(seed);
+  noiseSeed(seed);
+
+  paintSilk();
+
+  // seven ranges, far to near; the tallest, most saturated
+  // peaks sit in the middle distance, as in the handscroll
+  const layers = 7;
+  const trees = [];
+  for (let i = 0; i < layers; i++) {
+    paintRange(i, layers, trees);
+  }
+
+  paintWater();
+  paintTrees(trees);
+  paintBoats();
+  paintGrain();
+  paintSeal();
+}
+
+// ----------------------------------------------------- silk ground
+function paintSilk() {
+  // vertical tonal drift, slightly darker at top
+  for (let y = 0; y < height; y++) {
+    const t = y / height;
+    const c = lerpColor(col(P.silkDark), col(P.silk), 0.35 + 0.65 * t);
+    stroke(c); line(0, y, width, y);
+  }
+  // soft mottling, like water stains in old silk
+  noStroke();
+  for (let k = 0; k < 90; k++) {
+    const x = random(width), y = random(height);
+    const r = random(40, 190);
+    const lighten = random() < 0.5;
+    fill(lighten ? color(224, 198, 150, 7) : color(120, 92, 58, 6));
+    ellipse(x, y, r * random(1, 2.4), r);
+  }
+}
+
+// ---------------------------------------------- one mountain range
+function paintRange(i, n, trees) {
+  const t = i / (n - 1);                       // 0 = far, 1 = near
+  const baseline = lerp(height * 0.40, height * 0.86, pow(t, 1.15));
+
+  // amplitude: tallest in the middle distance, low foreground banks
+  const prominence = sin(constrain(t, 0, 1) * PI);
+  const amp = lerp(50, 300, t) * (0.35 + 0.95 * prominence);
+
+  // haze: distant ranges dissolve toward the silk
+  const hazeMix = lerp(0.72, 0.04, pow(t, 0.8));
+
+  // compute ridgeline
+  const ridge = new Float32Array(width + 1);
+  const fRidge = 0.0058 + t * 0.0016;          // nearer = slightly busier
+  for (let x = 0; x <= width; x++) {
+    const env = pow(noise(x * 0.0016 + i * 37.7), 1.6);          // where peaks cluster
+    let r = 1 - abs(2 * noise(x * fRidge + i * 113.3) - 1);      // ridged noise = sharp peaks
+    r = pow(r, 1.7);
+    const detail = (noise(x * 0.032 + i * 7.1) - 0.5) * 0.16;
+    const h = amp * env * (0.30 + 1.05 * r + detail);
+    ridge[x] = baseline - max(h, 0);
+  }
+
+  // paint per-column gradients: pigment pools at the peak,
+  // dissolves to silk toward the base
+  const silkC = P.silk;
+  for (let x = 0; x <= width; x += 2) {
+    const y0 = ridge[x];
+    const hHere = baseline - y0;
+    if (hHere < 2) continue;
+
+    const blend = noise(x * 0.0035 + i * 19.7);                  // azurite <-> malachite drift
+    let peak = lerpColor(col(P.azurite), col(P.malachite), blend);
+    peak = lerpColor(peak, col(P.haze), hazeMix);
+    const mid = lerpColor(col(P.ochre), col(P.haze), hazeMix * 0.8);
+
+    const fade = hHere + 60;
+    const g = ctx.createLinearGradient(0, y0, 0, y0 + fade);
+    g.addColorStop(0.00, peak.toString());
+    g.addColorStop(0.55, css([red(mid), green(mid), blue(mid)], 1));
+    g.addColorStop(0.82, css(silkC, 1));
+    g.addColorStop(1.00, css(silkC, 0));
+    ctx.fillStyle = g;
+    ctx.fillRect(x, y0, 2, fade);
+  }
+
+  // ink contour along the ridgeline
+  strokeWeight(t > 0.5 ? 1.1 : 0.7);
+  stroke(P.ink[0], P.ink[1], P.ink[2], lerp(28, 95, t));
+  noFill();
+  beginShape();
+  for (let x = 0; x <= width; x += 3) vertex(x, ridge[x]);
+  endShape();
+
+  // texture strokes down steep faces (cun 皴 brush texture)
+  if (t > 0.3) {
+    stroke(P.ink[0], P.ink[1], P.ink[2], 18 + 26 * t);
+    strokeWeight(0.6);
+    for (let x = 6; x < width - 6; x += 5) {
+      const hHere = baseline - ridge[x];
+      if (hHere > amp * 0.35 && random() < 0.5) {
+        const len = random(6, hHere * 0.35);
+        const drift = random(-4, 4);
+        line(x, ridge[x] + 3, x + drift, ridge[x] + 3 + len);
+      }
+    }
+  }
+
+  // remember tree spots on the near banks
+  if (t > 0.68) {
+    for (let x = 12; x < width - 12; x += 7) {
+      const hHere = baseline - ridge[x];
+      if (hHere > 8 && noise(x * 0.05 + i * 51.2) > 0.58 && random() < 0.6) {
+        trees.push({ x, y: ridge[x], s: 0.7 + t * 0.9 });
+      }
+    }
+  }
+
+  // mist pooling at the base of the range
+  const mistTop = baseline - lerp(18, 46, t);
+  for (let y = mistTop; y < baseline + 26 && y < height; y++) {
+    const a = 46 * sin(map(y, mistTop, baseline + 26, 0, PI));
+    stroke(P.haze[0], P.haze[1], P.haze[2], a);
+    line(0, y, width, y);
+  }
+}
+
+// ------------------------------------------------------------ water
+function paintWater() {
+  const top = height * 0.86;
+
+  // slightly green-shifted silk for the river
+  for (let y = top; y < height; y++) {
+    const t = (y - top) / (height - top);
+    stroke(P.silk[0] - 14, P.silk[1] - 4, P.silk[2] - 6, 90 * (1 - t * 0.4));
+    line(0, y, width, y);
+  }
+
+  // fine ripple strokes, denser near the far shore
+  strokeWeight(0.7);
+  for (let y = top + 4; y < height - 4; y += random(5, 10)) {
+    const density = map(y, top, height, 0.85, 0.35);
+    let x = random(-30, 0);
+    while (x < width) {
+      const len = random(24, 90);
+      if (random() < density) {
+        const wob = sin(x * 0.02 + y) * 1.2;
+        stroke(P.ink[0] + 40, P.ink[1] + 44, P.ink[2] + 36, random(26, 50));
+        line(x, y + wob, x + len, y + wob + random(-0.6, 0.6));
+      }
+      x += len + random(18, 60);
+    }
+  }
+}
+
+// ------------------------------------------------------------ trees
+function paintTrees(trees) {
+  for (const tr of trees) {
+    const s = tr.s;
+    stroke(P.ink[0], P.ink[1], P.ink[2], 150);
+    strokeWeight(0.8 * s);
+    line(tr.x, tr.y + 1, tr.x + random(-1, 1), tr.y - 5 * s);      // trunk
+    noStroke();
+    const leaf = random() < 0.7;
+    fill(leaf ? color(38, 84, 66, 190) : color(P.ink[0], P.ink[1], P.ink[2], 170));
+    for (let k = 0; k < 4; k++) {                                  // moss-dot canopy
+      ellipse(tr.x + random(-3, 3) * s, tr.y - (4 + random(4)) * s,
+              random(2, 3.6) * s, random(1.6, 2.6) * s);
+    }
+  }
+}
+
+// ------------------------------------------------------------ boats
+function paintBoats() {
+  const nBoats = floor(random(1, 4));
+  for (let k = 0; k < nBoats; k++) {
+    const x = random(width * 0.1, width * 0.9);
+    const y = random(height * 0.90, height * 0.965);
+    stroke(P.ink[0], P.ink[1], P.ink[2], 170);
+    strokeWeight(1.1);
+    noFill();
+    // hull
+    beginShape();
+    vertex(x - 9, y - 1.5); vertex(x - 6, y + 1);
+    vertex(x + 6, y + 1);  vertex(x + 10, y - 2);
+    endShape();
+    strokeWeight(0.8);
+    line(x - 1, y, x - 1, y - 5);                                  // figure / mast
+    stroke(P.ink[0], P.ink[1], P.ink[2], 60);
+    line(x - 14, y + 3, x + 14, y + 3);                            // reflection
+  }
+}
+
+// ------------------------------------------------- grain + vignette
+function paintGrain() {
+  // silk weave: faint horizontal threads
+  for (let y = 0; y < height; y += 3) {
+    stroke(90, 70, 45, 5);
+    line(0, y, width, y);
+  }
+  // speckle
+  strokeWeight(1);
+  for (let k = 0; k < 5200; k++) {
+    const x = random(width), y = random(height);
+    stroke(random() < 0.5 ? color(60, 45, 26, random(4, 14))
+                          : color(230, 208, 160, random(4, 12)));
+    point(x, y);
+  }
+  // darkened scroll edges
+  const g = ctx.createLinearGradient(0, 0, 0, height);
+  g.addColorStop(0, 'rgba(60,42,22,0.30)');
+  g.addColorStop(0.10, 'rgba(60,42,22,0)');
+  g.addColorStop(0.92, 'rgba(60,42,22,0)');
+  g.addColorStop(1, 'rgba(60,42,22,0.30)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, width, height);
+  const gx = ctx.createLinearGradient(0, 0, width, 0);
+  gx.addColorStop(0, 'rgba(60,42,22,0.26)');
+  gx.addColorStop(0.04, 'rgba(60,42,22,0)');
+  gx.addColorStop(0.96, 'rgba(60,42,22,0)');
+  gx.addColorStop(1, 'rgba(60,42,22,0.26)');
+  ctx.fillStyle = gx; ctx.fillRect(0, 0, width, height);
+}
+
+// ------------------------------------------------------ collector seal
+function paintSeal() {
+  const s = 26;
+  const x = width - 54, y = height * 0.16;
+  noStroke();
+  fill(P.seal[0], P.seal[1], P.seal[2], 216);
+  rect(x, y, s, s, 2.5);
+  // abstract carved marks
+  stroke(P.silk[0], P.silk[1], P.silk[2], 235);
+  strokeWeight(1.6);
+  noFill();
+  line(x + 6,  y + 6,  x + 6,  y + 20);
+  line(x + 6,  y + 13, x + 12, y + 13);
+  line(x + 12, y + 6,  x + 12, y + 20);
+  line(x + 17, y + 6,  x + 21, y + 6);
+  line(x + 19, y + 6,  x + 19, y + 16);
+  line(x + 16, y + 20, x + 21, y + 16);
+}
+</script>
+</body>
+</html>
