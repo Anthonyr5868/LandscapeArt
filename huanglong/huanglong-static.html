@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yellow Dragon Pools — a view of Huanglong</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    :root {
+      --lacquer: #241b13;
+      --silk-hint: #c7a878;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--lacquer);
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: Georgia, "Times New Roman", serif;
+      color: var(--silk-hint);
+      padding: 28px 16px;
+      box-sizing: border-box;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 18px;
+      letter-spacing: 0.06em;
+    }
+
+    header h1 {
+      font-size: 15px;
+      font-weight: normal;
+      margin: 0;
+      opacity: 0.9;
+    }
+
+    header p {
+      font-size: 11px;
+      margin: 6px 0 0;
+      opacity: 0.5;
+      font-style: italic;
+    }
+
+    #holder {
+      max-width: 1100px;
+      width: 100%;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+    }
+
+    #holder canvas {
+      display: block;
+      width: 100% !important;
+      height: auto !important;
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>yellow dragon pools &mdash; huanglong, after Wang Ximeng</h1>
+    <p>a still view of the valley</p>
+  </header>
+  <div id="holder"></div>
+
+  <script type="module" src="./sketch.js"></script>
+</body>
+
+</html>

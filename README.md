@@ -9,7 +9,7 @@ Each sketch is a single self-contained HTML file. Open it in a browser and click
 | Sketch | Subject |
 | --- | --- |
 | [`wang-ximeng-landscape.html`](wang-ximeng-landscape.html) | After *A Thousand Li of Rivers and Mountains* (Wang Ximeng, 1113): layered azurite-and-malachite peaks on aged silk, mist bands, ripple-lined water, tiny trees and boats |
-| [`jiuzhaigou-landscape.html`](jiuzhaigou-landscape.html) | Jiuzhaigou National Park, Sichuan, in autumn: snow peaks, pointillist autumn forest, a plunging waterfall, and stacked travertine pools with sunken logs and rimstone cascades |
+| [`huanglong/huanglong-static.html`](huanglong/huanglong-static.html) | Yellow Dragon Pools, Huanglong: a still blue-green valley view with terraced travertine pools and a small temple |
 
 ## How they work
 
@@ -28,6 +28,6 @@ python3 -m http.server 8000
 # then visit http://localhost:8000
 ```
 
-`index.html` is a small gallery page linking both sketches — enable GitHub Pages on the repo (Settings → Pages → deploy from branch) to host it.
+`index.html` is a small gallery page linking the sketches — enable GitHub Pages on the repo (Settings → Pages → deploy from branch) to host it.
 
 p5.js is loaded from cdnjs, so an internet connection is required.
