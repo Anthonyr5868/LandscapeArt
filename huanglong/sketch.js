@@ -10,6 +10,7 @@ import { paintFlank } from './component/flank.js';
 import { paintBasin } from './component/basin.js';
 import { paintPools } from './component/pools.js';
 import { paintTemple } from './component/temple.js';
+import { paintTrees } from './component/tree.js';
 import { paintGrain } from './component/finish.js';
 
 const W = 1200, H = 820;
@@ -37,6 +38,10 @@ function draw() {
   paintFlank(1, 0.26, 0.62, 0.55, 0.08, 61);   // near right
 
   paintBasin();
+
+  // forests on the banks, painted before the pools so the terraces
+  // sit in front of them and the trees never float on the water
+  paintTrees();
 
   paintPools();
   paintTemple(width * 0.50, height * 0.548);

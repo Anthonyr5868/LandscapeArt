@@ -13,6 +13,11 @@ export const P = {
   poolPale: [150, 202, 180],
   poolMid: [64, 164, 152],
   poolDeep: [22, 110, 130],
+  bark: [46, 38, 30],   // wet dark trunk, keyed to ink
+  barkLit: [92, 74, 54],   // ochre-touched sunlit bark
+  leafDeep: [44, 96, 78],   // shadowed malachite foliage
+  leafMid: [96, 148, 108],   // malachite canopy
+  leafGold: [172, 130, 72],   // ochre autumn accents, ties to temple roof
 };
 
 export const BASIN = 0.55;              // where the valley floor begins

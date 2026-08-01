@@ -36,12 +36,16 @@
 </header>
 <div id="holder"></div>
 
-<script>
+<script type="module">
 // ---------------------------------------------------------------
 // Generative blue-green (qinglü) shanshui, after Wang Ximeng, 1113
 // Structure: silk ground -> mountain layers (far to near) with
 // azurite/malachite gradients + mist -> water -> details -> grain
 // ---------------------------------------------------------------
+
+// the conifers are shared with the Huanglong view; this page keeps
+// its own palette, but the two agree on the minerals that matter
+import { paintTree } from './huanglong/component/tree.js';
 
 const W = 1400, H = 520;
 let seed = 1113;                 // year the original was painted
@@ -186,12 +190,27 @@ function paintRange(i, n, trees) {
     }
   }
 
-  // remember tree spots on the near banks
+  // remember tree spots on the near banks. Each spot carries the
+  // range's own haze, so a conifer standing on a ridge dissolves by
+  // exactly as much as the ridge under it.
   if (t > 0.68) {
-    for (let x = 12; x < width - 12; x += 7) {
+    const near = (t - 0.68) / 0.32;                // 0 = furthest of the treed ranks
+    for (let x = 12; x < width - 12; x += 9) {
       const hHere = baseline - ridge[x];
       if (hHere > 8 && noise(x * 0.05 + i * 51.2) > 0.58 && random() < 0.6) {
-        trees.push({ x, y: ridge[x], s: 0.7 + t * 0.9 });
+        // a grove of one species, not a lone specimen every few pixels
+        const grove = pickKind();
+        for (let j = 1 + floor(random(3)); j > 0; j--) {
+          const xx = constrain(round(x + random(-8, 8)), 6, width - 6);
+          trees.push({
+            x: xx,
+            y: ridge[xx] + random(-1, 2),
+            H: lerp(10, 27, near) * random(0.78, 1.3),
+            haze: constrain(hazeMix + random(-0.04, 0.06), 0, 1),
+            kind: random() < 0.25 ? pickKind() : grove,
+            gold: near > 0.5 && random() < 0.12 ? random(0.24, 0.5) : 0,
+          });
+        }
       }
     }
   }
@@ -234,20 +253,18 @@ function paintWater() {
 }
 
 // ------------------------------------------------------------ trees
+// spruce and fir carry the stand; hemlock shows up in the open
+function pickKind() {
+  const u = random();
+  return u < 0.46 ? 'picea' : u < 0.80 ? 'abies' : 'tsuga';
+}
+
+// Spruce, fir and hemlock, drawn by the shared component. Sorted
+// down the canvas so each stands in front of the one behind it,
+// rather than in the left-to-right order they were collected.
 function paintTrees(trees) {
-  for (const tr of trees) {
-    const s = tr.s;
-    stroke(P.ink[0], P.ink[1], P.ink[2], 150);
-    strokeWeight(0.8 * s);
-    line(tr.x, tr.y + 1, tr.x + random(-1, 1), tr.y - 5 * s);      // trunk
-    noStroke();
-    const leaf = random() < 0.7;
-    fill(leaf ? color(38, 84, 66, 190) : color(P.ink[0], P.ink[1], P.ink[2], 170));
-    for (let k = 0; k < 4; k++) {                                  // moss-dot canopy
-      ellipse(tr.x + random(-3, 3) * s, tr.y - (4 + random(4)) * s,
-              random(2, 3.6) * s, random(1.6, 2.6) * s);
-    }
-  }
+  trees.sort((a, b) => a.y - b.y);
+  for (const tr of trees) paintTree(tr.kind, tr.x, tr.y, tr.H, tr.haze, tr.gold);
 }
 
 // ------------------------------------------------------------ boats
@@ -319,6 +336,12 @@ function paintSeal() {
   line(x + 19, y + 6,  x + 19, y + 16);
   line(x + 16, y + 20, x + 21, y + 16);
 }
+
+// p5 global mode looks for these on window; module scope hides them,
+// so hand them over explicitly
+window.setup = setup;
+window.draw = draw;
+window.mousePressed = mousePressed;
 </script>
 </body>
 </html>
