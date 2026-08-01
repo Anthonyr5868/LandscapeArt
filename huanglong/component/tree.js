@@ -1,4 +1,5 @@
 import { P, col } from '../palette.js';
+import { poolFan } from './pools.js';
 
 // ---------------------------------------------------------- forest
 // Three conifers of the Min Shan, each a different habit:
@@ -463,34 +464,54 @@ export function paintTree(kind, x, baseY, H, haze = 0, gold = 0, veil = MIST) {
   VEIL = MIST;
 }
 
-// Forest on the banks. Each rank is a line walked from the valley
-// head (p = 0: small, high, half dissolved) out to the canvas edge
-// (p = 1: near, full height, full pigment). The lowest rank stands
-// at the water's edge; above it the belt thins, and the last rank
-// climbs the flank itself, where the trees are only a stipple of
-// scale against the slope.
-const RANKS = [
+// Forest on the banks of the terrace fan. Rather than scattering the
+// stand over the valley floor, every tree is placed off the pool edge
+// itself: a belt is walked from the valley head (q = 0: small, hazy,
+// hemmed in where the fan is narrow) down to where the terraces reach
+// the canvas side (q = 1: near, full height, full pigment), standing
+// `out` px back from the water. The bank climbs as it draws away from
+// the pools, so that same offset lifts the tree up the slope.
+//
+// Three belts deep: the first has its feet at the rim — the terraces
+// are painted afterwards and close over the root flare, which is what
+// stops the trees reading as cut-outs laid on the basin.
+const BANK_RISE = 0.34;         // how fast the bank climbs off the water
+
+const BELTS = [
   {
-    xIn: 0.085, xOut: 0.015, y0: 0.560, y1: 0.735, h0: 13, h1: 78,
-    z0: 0.52, z1: 0.03, gap: [0.05, 0.14], clump: [2, 6], spread: 0.030
+    t0: 0.030, t1: 0.470, out: [4, 24], h0: 34, h1: 198,
+    z0: 0.44, z1: 0.02, gap: [0.028, 0.078], clump: [2, 5], spread: 0.014
   },
   {
-    xIn: 0.075, xOut: 0.010, y0: 0.546, y1: 0.658, h0: 10, h1: 46,
-    z0: 0.62, z1: 0.20, gap: [0.05, 0.13], clump: [2, 6], spread: 0.026
+    t0: 0.010, t1: 0.300, out: [36, 94], h0: 27, h1: 134,
+    z0: 0.56, z1: 0.16, gap: [0.024, 0.062], clump: [2, 5], spread: 0.016
   },
+  // the back of the stand, thinning as it lifts toward the flank
   {
-    xIn: 0.068, xOut: 0.008, y0: 0.535, y1: 0.598, h0: 8, h1: 26,
-    z0: 0.72, z1: 0.42, gap: [0.06, 0.15], clump: [2, 5], spread: 0.022
-  },
-  // up the flank: the belt lifts instead of falling, and thins out.
-  // These pale into the shaded slope, so they stipple it darker
-  // rather than sitting on it as flecks of mist.
-  {
-    xIn: 0.060, xOut: 0.040, y0: 0.542, y1: 0.436, h0: 7, h1: 14,
-    z0: 0.80, z1: 0.54, gap: [0.08, 0.22], clump: [1, 4], spread: 0.020,
-    veil: [24, 70, 86]
+    t0: 0.000, t1: 0.205, out: [104, 190], h0: 20, h1: 79,
+    z0: 0.68, z1: 0.36, gap: [0.034, 0.095], clump: [1, 4], spread: 0.018
   },
 ];
+
+// Where a belt actually has to stop. The fan widens as the terraces
+// grow, and past some depth the bank it sits on has left the canvas —
+// a belt walked to its nominal t1 spends its near end, and so its
+// tallest trees, off the frame. Walk back to the last depth still in
+// shot and end the belt there, so the stand keeps its full range of
+// height whatever size the pools are.
+function beltEnd(b, side) {
+  let t = b.t1;
+  for (; t > b.t0; t -= 0.004) {
+    const x = poolFanX(t, side, b.out[1]);
+    if (x > -40 && x < width + 40) break;
+  }
+  return t;
+}
+
+function poolFanX(t, side, out) {
+  const f = poolFan(t);
+  return f.cx + side * (f.edge + out);
+}
 
 // spruce and fir carry the stand; hemlock shows up in the open
 function pickKind() {
@@ -501,34 +522,38 @@ function pickKind() {
 export function paintTrees() {
   const stand = [];
   for (const side of [-1, 1]) {
-    for (const r of RANKS) {
-      const xIn = width * (0.5 + side * r.xIn);
-      const xOut = side < 0 ? width * r.xOut : width * (1 - r.xOut);
+    for (const b of BELTS) {
+      const tEnd = beltEnd(b, side);
       // groves with gaps between them, never an even picket line
-      let p = rr(0, 0.07);
+      let p = rr(0, 0.05);
       while (p < 1) {
         const grove = pickKind();
-        const n = floor(rr(r.clump[0], r.clump[1] + 1));
+        const n = floor(rr(b.clump[0], b.clump[1] + 1));
         for (let i = 0; i < n; i++) {
-          const q = constrain(p + rr(-r.spread, r.spread), 0, 1);
-          const near = pow(q, 1.2);
-          const haze = constrain(lerp(r.z0, r.z1, pow(q, 0.8)) + rr(-0.05, 0.05), 0, 1);
+          const q = constrain(p + rr(-b.spread, b.spread), 0, 1);
+          const f = poolFan(lerp(b.t0, tEnd, q));
+          const out = lerp(b.out[0], b.out[1], q) * rr(0.78, 1.3);
+          const near = pow(q, 1.15);
+          const haze = constrain(lerp(b.z0, b.z1, pow(q, 0.8)) + rr(-0.05, 0.05), 0, 1);
+          const x = f.cx + side * (f.edge + out);
+          if (x < -70 || x > width + 70) continue;   // walked off the frame
           stand.push({
             kind: random() < 0.25 ? pickKind() : grove,
-            x: lerp(xIn, xOut, q) + rr(-1, 1) * width * 0.012,
-            y: height * lerp(r.y0, r.y1, near) + rr(-1, 1) * height * (0.004 + 0.007 * near),
-            H: lerp(r.h0, r.h1, near) * rr(0.72, 1.26),
+            x,
+            // f.y is the row's centre; stand on the bank above its rim,
+            // close enough that the terrace still closes over the roots
+            y: f.y - f.ry * 0.85 - out * BANK_RISE + rr(-1, 1) * height * 0.006,
+            H: lerp(b.h0, b.h1, near) * rr(0.70, 1.34),   // broken crown line
             haze,
             // a few stands turning, picking up the ochre of the roof
             gold: haze < 0.34 && random() < 0.13 ? rr(0.24, 0.5) : 0,
-            veil: r.veil || MIST,
           });
         }
-        p += rr(r.gap[0], r.gap[1]);
+        p += rr(b.gap[0], b.gap[1]);
       }
     }
   }
   // farthest up the slope first, so every tree overlaps the one behind
   stand.sort((a, b) => a.y - b.y);
-  for (const t of stand) paintTree(t.kind, t.x, t.y, t.H, t.haze, t.gold, t.veil);
+  for (const t of stand) paintTree(t.kind, t.x, t.y, t.H, t.haze, t.gold);
 }

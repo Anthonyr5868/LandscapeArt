@@ -16,6 +16,9 @@ import { paintGrain } from './component/finish.js';
 const W = 1200, H = 820;
 const SEED = 1113;
 
+// Trees off for a before/after: load the page with ?trees=0
+const SHOW_TREES = new URLSearchParams(location.search).get('trees') !== '0';
+
 function setup() {
   const c = createCanvas(W, H);
   c.parent('holder');
@@ -41,7 +44,12 @@ function draw() {
 
   // forests on the banks, painted before the pools so the terraces
   // sit in front of them and the trees never float on the water
-  paintTrees();
+  if (SHOW_TREES) paintTrees();
+
+  // the stand draws thousands of random strokes; reseed so everything
+  // after it lands identically whether or not the trees were painted
+  randomSeed(SEED + 1);
+  noiseSeed(SEED + 1);
 
   paintPools();
   paintTemple(width * 0.50, height * 0.548);

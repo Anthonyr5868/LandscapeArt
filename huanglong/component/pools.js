@@ -31,10 +31,10 @@ function makePool(cx, cy, rx, ry, t) {
     cx, cy, rx, ry, t,
     k: random(1000),
     pts: blobPts(cx, cy, rx, ry, random(1000)),
-    wallH: lerp(4, 30, t) * random(0.85, 1.2),
+    wallH: lerp(6, 46, t) * random(0.85, 1.2),
     deepBlend: random(0.45, 1),
     hazeMix: lerp(0.42, 0, pow(t, 0.8)),        // far pools dissolve
-    w: lerp(2.5, 9, t),                          // rim ridge width
+    w: lerp(3, 11, t),                           // rim ridge width
   };
 }
 
@@ -152,26 +152,50 @@ function poolRim(p) {
   }
 }
 
+// The wedge of ground the terraces occupy, at row depth t — 0 at the
+// valley head, 1 at the near edge. Exported because the forest is
+// planted along these banks rather than scattered over the valley, and
+// the two have to agree on where the water stops.
+const RX = [132, 284];          // pool half-width, before perspective scale
+const RY = [0.26, 0.33];        // ...as a fraction of it, dish being flat
+const OVERHANG = 0.39;          // how far past hw the last rim carries on
+const rxMean = (RX[0] + RX[1]) / 2;
+
+export function poolFan(t) {
+  const sc = lerp(0.36, 1.7, t);                 // perspective scale
+  // fan opens wide enough that mid and near rows run edge to edge
+  const hw = width * lerp(0.13, 0.80, pow(t, 0.85));
+  return {
+    sc, hw,
+    y: lerp(height * 0.578, height * 0.995, pow(t, 1.28)),
+    cx: width * (0.5 + 0.04 * sin(t * 4.2 + 0.6)),
+    // hw is where the last pool *starts*; its rim carries on past it
+    edge: hw + rxMean * OVERHANG * sc,
+    // y is the row's centre line — a dish reaches this much above it,
+    // which is where the dry bank actually begins
+    ry: rxMean * (RY[0] + RY[1]) / 2 * sc,
+  };
+}
+
 // pools fan out from the valley head toward the viewer,
 // meandering slightly as the terraces step down
 export function paintPools() {
-  const rows = 7;
+  const rows = 6;
   for (let i = rows - 1; i >= 0; i--) {
     const t = i / (rows - 1);                    // 0 = far, 1 = near
-    const y = lerp(height * 0.578, height * 0.995, pow(t, 1.28));
-    const sc = lerp(0.36, 2.0, t);               // perspective scale
-    // fan opens wide enough that mid and near rows run edge to edge
-    const hw = width * lerp(0.13, 0.80, pow(t, 0.85));
-    const cxRow = width * (0.5 + 0.04 * sin(t * 4.2 + 0.6));
+    const { y, cx: cxRow, sc, hw } = poolFan(t);
 
     const row = [];
-    let x = cxRow - hw + random(-30, 10);
+    let x = cxRow - hw + random(-90, -30);       // start outside the fan
     while (x < cxRow + hw) {
-      const rx = random(55, 140) * sc;
-      const ry = rx * random(0.24, 0.31);        // flat dishes: walls stay exposed
-      if (random() < 0.05) { x += rx * random(1.3, 1.7); continue; }
+      const rx = random(RX[0], RX[1]) * sc;
+      const ry = rx * random(RY[0], RY[1]);      // flat dishes: walls stay exposed
+      if (random() < 0.02) { x += rx * random(1.15, 1.35); continue; }
       row.push(makePool(x + rx * 0.6, y + random(-0.35, 0.35) * ry, rx, ry, t));
-      x += rx * random(0.75, 1.15);              // rims merge into one sheet
+      // the blob outline pulls in to 0.70 rx at its narrowest, so the
+      // step has to stay under that or neighbours part and the basin
+      // shows through between them
+      x += rx * random(0.74, 0.98);
     }
 
     // walls first (same-row waters erase the lateral ones), then

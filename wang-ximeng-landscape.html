@@ -49,6 +49,9 @@ import { paintTree } from './huanglong/component/tree.js';
 
 const W = 1400, H = 520;
 let seed = 1113;                 // year the original was painted
+
+// trees off for a before/after: load the page with ?trees=0
+const SHOW_TREES = new URLSearchParams(location.search).get('trees') !== '0';
 let ctx;
 
 // palette — mineral pigments on aged silk
@@ -96,7 +99,13 @@ function draw() {
   }
 
   paintWater();
-  paintTrees(trees);
+  if (SHOW_TREES) paintTrees(trees);
+
+  // the stand burns a lot of random(); reseed so the boats, grain and
+  // seal land identically whether or not the trees were painted
+  randomSeed(seed + 1);
+  noiseSeed(seed + 1);
+
   paintBoats();
   paintGrain();
   paintSeal();
