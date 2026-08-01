@@ -31,13 +31,15 @@ const clampY = y => min(y, FLOOR);
 
 function jline(x1, y1, x2, y2, j) {
   line(x1 + rr(-j, j), clampY(y1 + rr(-j, j)),
-       x2 + rr(-j, j), clampY(y2 + rr(-j, j)));
+    x2 + rr(-j, j), clampY(y2 + rr(-j, j)));
 }
 
 function qp(p0, p1, p2, t) {    // point on a quadratic bezier
   const u = 1 - t;
-  return { x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
-           y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y };
+  return {
+    x: u * u * p0.x + 2 * u * t * p1.x + t * t * p2.x,
+    y: u * u * p0.y + 2 * u * t * p1.y + t * t * p2.y
+  };
 }
 
 function curvePath(p0, p1, p2, steps, j) {
@@ -77,7 +79,7 @@ function tuft(x, y, s, half, droop, d, l, wt, maxLen) {
     stroke(lerpColor(d, l, random()));
     strokeWeight(wt);
     jline(x + s * off, y + off * 0.28,
-          x + s * (off + ln * 0.85), y + off * 0.28 + ln * droop, 0.35);
+      x + s * (off + ln * 0.85), y + off * 0.28 + ln * droop, 0.35);
   }
 }
 
@@ -87,8 +89,10 @@ function depthPair(base, z, haze) {
   const body = lerpColor(col(P.leafDeep), base, 0.34 + 0.66 * k);
   const d = lerpColor(body, col(P.ink), 0.42);
   const l = lerpColor(body, col(P.leafMid), 0.14 + 0.30 * k);
-  return { d: lerpColor(d, col(VEIL), haze),
-           l: lerpColor(l, col(VEIL), haze) };
+  return {
+    d: lerpColor(d, col(VEIL), haze),
+    l: lerpColor(l, col(VEIL), haze)
+  };
 }
 
 // ------------------------------------------------ crown construction
@@ -174,7 +178,7 @@ function bole(cx, baseY, H, o) {
   const lit = lerpColor(col(P.barkLit), col(VEIL), o.haze);
   const mid = lerpColor(col(P.bark), col(VEIL), o.haze);
   const dark = lerpColor(color(P.bark[0] - 16, P.bark[1] - 14, P.bark[2] - 12),
-                         col(VEIL), o.haze);
+    col(VEIL), o.haze);
 
   // A slender trunk cannot carry three bands — one wet stroke
   // instead, tapered by hand: the root flare above is far too abrupt
@@ -332,7 +336,7 @@ function firBough(b, base, o) {
     const rl = len * (0.60 + 0.40 * cos(u * PI));
     const reach = (0.9 * o.q + rl * 0.17) * 0.9;
     const tipY = max(b.y - 6 * o.q,
-                     min(b.y + u * rl * 0.55 + (low * 6 - 2) * o.q, FLOOR - reach));
+      min(b.y + u * rl * 0.55 + (low * 6 - 2) * o.q, FLOOR - reach));
     const tip = { x: p0.x + s * rl, y: tipY };
     const ctl = { x: p0.x + s * rl * 0.5, y: b.y + u * rl * 0.20 - 3 * o.q };
     stroke(d); strokeWeight(wt);
@@ -379,7 +383,7 @@ function hemlockBough(b, base, o) {
     const rl = len * (0.62 + 0.38 * cos(u * PI));
     const reach = (1.0 * o.q + rl * 0.18) * 0.95;
     const tipY = max(b.y - 4 * o.q,
-                     min(b.y + u * rl * 0.4 + (5 + low * 14) * o.q, FLOOR - reach));
+      min(b.y + u * rl * 0.4 + (5 + low * 14) * o.q, FLOOR - reach));
     const tip = { x: p0.x + s * rl, y: tipY };
     const ctl = { x: p0.x + s * rl * 0.55, y: b.y + u * rl * 0.14 - 2 * o.q };
     stroke(d); strokeWeight(wt);
@@ -466,18 +470,26 @@ export function paintTree(kind, x, baseY, H, haze = 0, gold = 0, veil = MIST) {
 // climbs the flank itself, where the trees are only a stipple of
 // scale against the slope.
 const RANKS = [
-  { xIn: 0.085, xOut: 0.015, y0: 0.560, y1: 0.735, h0: 13, h1: 78,
-    z0: 0.52, z1: 0.03, gap: [0.05, 0.14], clump: [2, 6], spread: 0.030 },
-  { xIn: 0.075, xOut: 0.010, y0: 0.546, y1: 0.658, h0: 10, h1: 46,
-    z0: 0.62, z1: 0.20, gap: [0.05, 0.13], clump: [2, 6], spread: 0.026 },
-  { xIn: 0.068, xOut: 0.008, y0: 0.535, y1: 0.598, h0: 8, h1: 26,
-    z0: 0.72, z1: 0.42, gap: [0.06, 0.15], clump: [2, 5], spread: 0.022 },
+  {
+    xIn: 0.085, xOut: 0.015, y0: 0.560, y1: 0.735, h0: 13, h1: 78,
+    z0: 0.52, z1: 0.03, gap: [0.05, 0.14], clump: [2, 6], spread: 0.030
+  },
+  {
+    xIn: 0.075, xOut: 0.010, y0: 0.546, y1: 0.658, h0: 10, h1: 46,
+    z0: 0.62, z1: 0.20, gap: [0.05, 0.13], clump: [2, 6], spread: 0.026
+  },
+  {
+    xIn: 0.068, xOut: 0.008, y0: 0.535, y1: 0.598, h0: 8, h1: 26,
+    z0: 0.72, z1: 0.42, gap: [0.06, 0.15], clump: [2, 5], spread: 0.022
+  },
   // up the flank: the belt lifts instead of falling, and thins out.
   // These pale into the shaded slope, so they stipple it darker
   // rather than sitting on it as flecks of mist.
-  { xIn: 0.060, xOut: 0.040, y0: 0.542, y1: 0.436, h0: 7, h1: 14,
+  {
+    xIn: 0.060, xOut: 0.040, y0: 0.542, y1: 0.436, h0: 7, h1: 14,
     z0: 0.80, z1: 0.54, gap: [0.08, 0.22], clump: [1, 4], spread: 0.020,
-    veil: [24, 70, 86] },
+    veil: [24, 70, 86]
+  },
 ];
 
 // spruce and fir carry the stand; hemlock shows up in the open
