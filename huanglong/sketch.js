@@ -12,6 +12,7 @@ import { paintPools } from './component/pools.js';
 import { paintTemple } from './component/temple.js';
 import { paintTrees, paintTempleGrove } from './component/tree.js';
 import { paintShrubs } from './component/shrub.js';
+import { paintBoardwalk } from './component/boardwalk.js';
 import { paintGrain } from './component/finish.js';
 import { HEAD_X } from './palette.js';
 
@@ -70,6 +71,14 @@ function draw() {
   if (SHOW_TREES) paintTempleGrove(TX, TY);
 
   paintMistBand();
+
+  // Last of all, and after the mist: the walk is the ground the viewer
+  // is standing on, so nothing in the air of the valley may hang in
+  // front of it. Its railing reaches high enough at the left edge to
+  // cross the band of mist lying along the basin, and a handrail at
+  // arm's length seen through cloud is the one thing that would give
+  // the whole foreground away.
+  paintBoardwalk();
   paintGrain();
 }
 
