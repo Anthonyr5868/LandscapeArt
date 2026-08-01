@@ -62,15 +62,35 @@
       width: 100% !important;
       height: auto !important;
     }
+
+    footer {
+      margin-top: 18px;
+      font-size: 11px;
+      letter-spacing: 0.06em;
+    }
+
+    footer a {
+      color: var(--silk-hint);
+      text-decoration: none;
+      opacity: 0.45;
+      border-bottom: 1px solid rgba(199, 168, 120, 0.25);
+      padding-bottom: 2px;
+      transition: opacity 0.2s ease;
+    }
+
+    footer a:hover {
+      opacity: 0.85;
+    }
   </style>
 </head>
 
 <body>
   <header>
-    <h1>yellow dragon pools &mdash; huanglong, after Wang Ximeng</h1>
+    <h1>yellow dragon pools &mdash; huanglong</h1>
     <p>a still view of the valley</p>
   </header>
   <div id="holder"></div>
+  <footer><a href="../gallery.html">other landscapes &mdash;</a></footer>
 
   <script type="module" src="./sketch.js"></script>
 </body>
