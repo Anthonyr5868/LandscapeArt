@@ -27,8 +27,11 @@ export function paintFlank(side, yEdge, xInner, yInner, hazeMix, k) {
     ridge[x] = spine - (r + 0.45 * r2) * amp - noise(x * 0.02 + k * 3.1) * 16;
   }
 
-  // per-column pigment gradient down the face
-  for (let x = 0; x <= width; x += 2) {
+  // Per-column pigment gradient down the face. Stepped one pixel at a
+  // time, overlapping slightly: off-axis the right-hand slope has to
+  // lose its whole height in a third of the canvas, and at that pitch
+  // a two-pixel column turns the ridge into a visible staircase.
+  for (let x = 0; x <= width; x += 1) {
     if (isNaN(ridge[x])) continue;
     const y0 = ridge[x];
     if (baseline - y0 < 2) continue;
@@ -45,7 +48,7 @@ export function paintFlank(side, yEdge, xInner, yInner, hazeMix, k) {
     g.addColorStop(0.84, css(P.silk, 1));
     g.addColorStop(1.00, css(P.silk, 0));
     ctx.fillStyle = g;
-    ctx.fillRect(x, y0, 2, fade);
+    ctx.fillRect(x, y0, 1.5, fade);
   }
 
   // ink contour along the ridge
@@ -54,7 +57,7 @@ export function paintFlank(side, yEdge, xInner, yInner, hazeMix, k) {
   stroke(P.ink[0], P.ink[1], P.ink[2], near ? 85 : 34);
   noFill();
   beginShape();
-  for (let x = 0; x <= width; x += 3) {
+  for (let x = 0; x <= width; x += 2) {
     if (!isNaN(ridge[x])) vertex(x, ridge[x]);
   }
   endShape();

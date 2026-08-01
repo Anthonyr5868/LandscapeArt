@@ -141,7 +141,9 @@ function addBough(arr, cx, baseY, H, th, y, spread, t, o) {
 // boughs to hide a mass this dark behind them.
 function crownCore(cx, baseY, H, o) {
   const bottom = baseY - H * (o.clearBole + 0.10), top = o.crownTopY;
-  const strength = o.solid * (0.22 + 0.78 * o.q);
+  // A small crown still needs a body. Thinned to nothing it leaves the
+  // mid-distance trees as outlines with the bank showing through them.
+  const strength = o.solid * (0.42 + 0.58 * o.q);
   noStroke();
   for (const [k, a] of [[1.00, 15], [0.80, 17], [0.60, 20], [0.38, 24]]) {
     fill(P.ink[0] - 8, P.ink[1] - 4, P.ink[2] - 8, a * strength);
@@ -267,7 +269,7 @@ function habitOpts(baseY, H, haze, q, extra) {
     stemTop: baseY - H, topLimit: baseY - H + max(1, H * 0.007),
     crownTopY: baseY - H,
     q, haze, solid: 1 - haze,
-    wt: lerp(0.5, 1, q),
+    wt: lerp(0.75, 1, q),
   }, extra);
 }
 
@@ -299,8 +301,13 @@ function spruceBough(b, base, o) {
   stroke(d); strokeWeight(wt);
   curvePath(p0, p1, p2, 10, 0.3 * o.q);
   strokeWeight(wt * 0.8);
+  // Branchlets spaced by the pixel rather than by a fraction of the
+  // rib. o.step alone gives a stub at the apex the same twenty clusters
+  // as a full bough at the base — invisible, and most of what the
+  // stand costs to draw.
+  const st = max(o.step, 2.4 / max(len, 1));
   let i = 0;
-  for (let t = 0.03; t < 1; t += o.step, i++) {
+  for (let t = 0.03; t < 1; t += st, i++) {
     const p = qp(p0, p1, p2, t);
     const hl = hang * (0.42 + 0.78 * sin(pow(t, 0.75) * PI));
     stroke(lerpColor(d, l, t < 0.55 ? pow(random(), 1.8) * 0.5 : 0.35 + random() * 0.65));
@@ -345,7 +352,7 @@ function firBough(b, base, o) {
     strokeWeight(wt * 0.72);
     stroke(lerpColor(d, l, 0.15 + random() * 0.2));
     let half = false;
-    for (let t = 0.04; t < 1; t += o.step) {
+    for (let t = 0.04, st = max(o.step, 2.2 / max(rl, 1)); t < 1; t += st) {
       if (!half && t > 0.55) { stroke(lerpColor(d, l, 0.55 + random() * 0.45)); half = true; }
       const p = qp(p0, ctl, tip, t);
       const nl = (0.9 * o.q + rl * 0.17) * (0.45 + 0.65 * sin(pow(t, 0.75) * PI));
@@ -392,7 +399,7 @@ function hemlockBough(b, base, o) {
     strokeWeight(wt * 0.7);
     stroke(lerpColor(d, l, 0.1 + random() * 0.25));
     let half = false;
-    for (let t = 0.04; t < 1; t += o.step) {
+    for (let t = 0.04, st = max(o.step, 2.2 / max(rl, 1)); t < 1; t += st) {
       if (!half && t > 0.6) { stroke(lerpColor(d, l, 0.6 + random() * 0.4)); half = true; }
       const p = qp(p0, ctl, tip, t);
       const nl = (1.0 * o.q + rl * 0.18) * (0.42 + 0.68 * sin(pow(t, 0.75) * PI));
@@ -415,15 +422,20 @@ function farHabit(cx, baseY, H, base, haze, sp) {
   strokeWeight(max(0.6, H * 0.035));
   line(cx, baseY, cx, baseY - H * 0.4);
 
-  const rows = max(5, round(H * 0.55));
+  // Enough tiers, and heavy enough, to close into a solid wedge. At a
+  // dozen thin strokes a far tree is a wire diagram: the bank shows
+  // straight through it, and a whole rank of them reads as gaps in the
+  // treeline rather than as a treeline. What has to survive this size
+  // is the mass, not the drawing.
+  const rows = max(8, round(H * 0.8));
   const sway = rr(-1, 1) * H * 0.03;
-  strokeWeight(max(0.65, H * 0.045));
+  strokeWeight(max(1.1, H * 0.055));
   for (let i = 0; i < rows; i++) {
     const t = i / (rows - 1);
     const y = lerp(baseY - H * 0.14, baseY - H, t);
     const ax = cx + sway * t;
     const half = pow(1 - t, sp.taper) * H * sp.width + H * 0.035;
-    stroke(lerpColor(dark, g, 0.12 + 0.72 * random()));
+    stroke(lerpColor(dark, g, 0.05 + 0.60 * random()));
     jline(ax, y, ax - half, y + half * sp.droop, H * 0.012);
     jline(ax, y, ax + half, y + half * sp.droop, H * 0.012);
   }
@@ -458,10 +470,84 @@ export function paintTree(kind, x, baseY, H, haze = 0, gold = 0, veil = MIST) {
   const base = speciesGreen(kind, gold);
   push();
   strokeCap(ROUND);
-  if (H < 20) farHabit(x, baseY, H, base, haze, sp);
+  // The wedge stands in wherever the habit would not survive being
+  // drawn — which is a question of size *and* of how far the tree has
+  // already dissolved into the veil, not of size alone. A crisp 30 px
+  // tree on a near ridge still earns its boughs; the same tree at half
+  // strength up the valley spends them on strokes nobody can resolve,
+  // and a whole rank of those reads as gaps in the treeline.
+  if (H < lerp(20, 40, haze)) farHabit(x, baseY, H, base, haze, sp);
   else sp.habit(x, baseY, H, base, haze, constrain(H / 150, 0.2, 1));
   pop();
   VEIL = MIST;
+}
+
+// ---------------------------------------------------- temple grove
+// A handful of conifers on the bank in front of the temple, painted
+// after it so they cross its silhouette. Two jobs. The overlap fixes
+// the hall in space: the moment one thing passes in front of another
+// the eye reads foreground, midground and background as separate
+// depths instead of one flat plane. And the outer trees frame it —
+// a gate of trunks either side, which walks the eye up the valley and
+// stops it exactly there.
+//
+// What is covered matters more than how much. The platform and the
+// ends of the red wall go behind foliage; the roofs and the spire
+// stay clear, since they are the thing the whole composition points
+// at. The two trees that actually cross the hall are dropped to part
+// opacity — needles thin enough for the red to bleed through read as
+// mist hanging in the branches rather than as a tree in the way.
+//
+// dx/dy are offsets from the temple's own anchor: it is placed by
+// sketch.js and the grove has to travel with it.
+const GROVE = [
+  // the outer gate: a clump each side, then a gap, so the stand never
+  // lines up into a picket fence across the valley head
+  { kind: 'picea', dx: -112, dy: 4, H: 62, haze: 0.46, a: 1 },
+  { kind: 'abies', dx: -96, dy: 7, H: 80, haze: 0.40, a: 1 },
+  { kind: 'abies', dx: -63, dy: 2, H: 44, haze: 0.50, a: 1 },
+  // the pair that crosses the hall
+  { kind: 'tsuga', dx: -33, dy: 11, H: 93, haze: 0.26, a: 0.80 },
+  { kind: 'abies', dx: -18, dy: 12, H: 41, haze: 0.22, a: 0.92 },
+  { kind: 'abies', dx: 23, dy: 12, H: 36, haze: 0.24, a: 0.92 },
+  { kind: 'picea', dx: 41, dy: 10, H: 88, haze: 0.28, a: 0.80 },
+  { kind: 'abies', dx: 72, dy: 2, H: 46, haze: 0.50, a: 1 },
+  { kind: 'picea', dx: 92, dy: 6, H: 73, haze: 0.42, a: 1 },
+  { kind: 'abies', dx: 107, dy: 9, H: 57, haze: 0.44, a: 1 },
+];
+
+export function paintTempleGrove(tx, ty) {
+  const ctx = drawingContext;
+  const g = [...GROVE];
+
+  // The grove has to run back into the bank stands either side of it,
+  // or it reads as an island of trees marooned at the valley head. A
+  // thinning tail carries it out to meet them: smaller and hazier as
+  // it goes, and lifting, since the ground climbs away from the water.
+  for (const side of [-1, 1]) {
+    let dx = 116;
+    while (dx < 288) {
+      const u = (dx - 116) / 172;                 // 0 at the grove, 1 at the stand
+      g.push({
+        kind: pickKind(), a: 1,
+        dx: side * (dx + rr(-5, 5)),
+        dy: lerp(2, -12, u) + rr(-3, 3),
+        H: lerp(52, 18, pow(u, 0.7)) * rr(0.78, 1.2),
+        // held under 0.7: past that the veil stops reading as distance
+        // and the tail turns to frost standing on the bank
+        haze: constrain(lerp(0.38, 0.52, u) + rr(-0.04, 0.04), 0, 1),
+      });
+      dx += rr(4, 11) * lerp(1, 0.5, u);        // closing up, as in the belts
+    }
+  }
+
+  // the ones standing furthest back go down first, as in the stand
+  for (const t of g.sort((a, b) => a.dy - b.dy)) {
+    ctx.save();
+    ctx.globalAlpha = t.a;
+    paintTree(t.kind, tx + t.dx, ty + t.dy, t.H, t.haze);
+    ctx.restore();
+  }
 }
 
 // Forest on the banks of the terrace fan. Rather than scattering the
@@ -479,17 +565,17 @@ const BANK_RISE = 0.34;         // how fast the bank climbs off the water
 
 const BELTS = [
   {
-    t0: 0.030, t1: 0.470, out: [4, 24], h0: 34, h1: 198,
-    z0: 0.44, z1: 0.02, gap: [0.028, 0.078], clump: [2, 5], spread: 0.014
+    t0: 0.030, t1: 0.470, out: [4, 24], h0: 17, h1: 236,
+    z0: 0.46, z1: 0.02, gap: [0.028, 0.078], clump: [2, 5], spread: 0.014
   },
   {
-    t0: 0.010, t1: 0.300, out: [36, 94], h0: 27, h1: 134,
-    z0: 0.56, z1: 0.16, gap: [0.024, 0.062], clump: [2, 5], spread: 0.016
+    t0: 0.010, t1: 0.300, out: [36, 94], h0: 14, h1: 158,
+    z0: 0.54, z1: 0.16, gap: [0.024, 0.062], clump: [2, 5], spread: 0.016
   },
   // the back of the stand, thinning as it lifts toward the flank
   {
-    t0: 0.000, t1: 0.205, out: [104, 190], h0: 20, h1: 79,
-    z0: 0.68, z1: 0.36, gap: [0.034, 0.095], clump: [1, 4], spread: 0.018
+    t0: 0.000, t1: 0.205, out: [104, 190], h0: 10, h1: 90,
+    z0: 0.60, z1: 0.40, gap: [0.034, 0.095], clump: [1, 4], spread: 0.018
   },
 ];
 
@@ -527,13 +613,27 @@ export function paintTrees() {
       // groves with gaps between them, never an even picket line
       let p = rr(0, 0.05);
       while (p < 1) {
+        // A fixed stride down the belt lands the trees at roughly even
+        // spacing in canvas pixels — the belt's x and its q happen to
+        // run near enough in step. But the trees themselves fall from
+        // 236 px to 17, so that even spacing reads as a solid wall near
+        // the viewer and a scatter of specks with bank showing through
+        // by the time it reaches the temple. Stride and scatter both
+        // close up with the trees, so the stand thickens into a band as
+        // it goes back, the way a treeline actually recedes.
+        const crowd = lerp(0.13, 1, pow(p, 0.8));
         const grove = pickKind();
         const n = floor(rr(b.clump[0], b.clump[1] + 1));
         for (let i = 0; i < n; i++) {
-          const q = constrain(p + rr(-b.spread, b.spread), 0, 1);
+          const q = constrain(p + rr(-b.spread, b.spread) * crowd, 0, 1);
           const f = poolFan(lerp(b.t0, tEnd, q));
           const out = lerp(b.out[0], b.out[1], q) * rr(0.78, 1.3);
-          const near = pow(q, 1.15);
+          // Height falls away faster than the belt walks back. A
+          // linear ramp keeps trees near full size well up the valley,
+          // where they then argue with the pools they stand beside —
+          // the exponent holds them small until the belt is genuinely
+          // near, so the stand shrinks the way the terraces do.
+          const near = pow(q, 1.5);
           const haze = constrain(lerp(b.z0, b.z1, pow(q, 0.8)) + rr(-0.05, 0.05), 0, 1);
           const x = f.cx + side * (f.edge + out);
           if (x < -70 || x > width + 70) continue;   // walked off the frame
@@ -549,7 +649,7 @@ export function paintTrees() {
             gold: haze < 0.34 && random() < 0.13 ? rr(0.24, 0.5) : 0,
           });
         }
-        p += rr(b.gap[0], b.gap[1]);
+        p += rr(b.gap[0], b.gap[1]) * crowd;
       }
     }
   }
